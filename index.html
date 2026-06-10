@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receipt Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: 'Crimson Pro', Georgia, serif;
+  background: #0d0d0d;
+  color: #f0ede8;
+  line-height: 1.6;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+/* SVG noise overlay */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* ===== TYPOGRAPHY ===== */
+h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; letter-spacing: 0.04em; line-height: 1; }
+h1 { font-size: 2.8rem; }
+h2 { font-size: 1.8rem; }
+h3 { font-size: 1.4rem; }
+code, .mono { font-family: 'DM Mono', monospace; }
+a { color: #F45D00; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ===== LAYOUT ===== */
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== HEADER ===== */
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid #f0ede8;
+  padding-bottom: 0.75rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+header h1 { color: #F45D00; font-size: 2rem; }
+header .sub { font-size: 0.9rem; color: #888; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  background: transparent;
+  color: #f0ede8;
+  border: 1px solid #f0ede8;
+  padding: 0.5rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btn:hover { background: #f0ede8; color: #0d0d0d; }
+.btn-primary { border-color: #F45D00; color: #F45D00; }
+.btn-primary:hover { background: #F45D00; color: #0d0d0d; }
+.btn-sm { padding: 0.3rem 1rem; font-size: 0.95rem; }
+.btn-danger { border-color: #ff4444; color: #ff4444; }
+.btn-danger:hover { background: #ff4444; color: #0d0d0d; }
+.btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+
+/* ===== FORMS ===== */
+.form-group { margin-bottom: 1.25rem; }
+.form-group label {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-bottom: 0.3rem;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  background: transparent;
+  border: 1px solid #444;
+  color: #f0ede8;
+  padding: 0.6rem 0.8rem;
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 1.1rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-group input:focus, .form-group select:focus { border-color: #F45D00; }
+.form-group select option { background: #1a1a1a; color: #f0ede8; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+/* ===== BUDGET CARDS ===== */
+.budget-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+.budget-card {
+  border: 1px solid #333;
+  padding: 1rem;
+}
+.budget-card .cat-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-bottom: 0.3rem;
+}
+.budget-card .amount {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  color: #f0ede8;
+}
+.budget-card .amount .spent { color: #F45D00; }
+.budget-card .amount .sep { color: #444; margin: 0 0.3rem; }
+.budget-card .amount .budget { color: #666; }
+.budget-card .bar {
+  height: 3px;
+  background: #222;
+  margin-top: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.budget-card .bar-fill {
+  height: 100%;
+  background: #F45D00;
+  transition: width 0.3s;
+}
+.budget-card.over .bar-fill { background: #ff4444; }
+.budget-card .remaining {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  margin-top: 0.4rem;
+  color: #666;
+}
+.budget-card.over .remaining { color: #ff4444; }
+.total-card {
+  grid-column: 1 / -1;
+  border-color: #F45D00;
+}
+.total-card .amount { font-size: 2rem; }
+
+/* ===== RECEIPT LIST ===== */
+.receipt-item {
+  border-bottom: 1px solid #222;
+  padding: 0.75rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.receipt-item:last-child { border-bottom: none; }
+.receipt-item .r-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: #666;
+  min-width: 5rem;
+}
+.receipt-item .r-store {
+  flex: 1;
+  font-size: 1.05rem;
+}
+.receipt-item .r-category {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  border: 1px solid #333;
+  padding: 0.1rem 0.4rem;
+}
+.receipt-item .r-cost {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.1rem;
+  color: #F45D00;
+  min-width: 5rem;
+  text-align: right;
+}
+.receipt-item .r-delete {
+  background: none;
+  border: none;
+  color: #444;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+  transition: color 0.15s;
+}
+.receipt-item .r-delete:hover { color: #ff4444; }
+
+/* ===== FILTER BAR ===== */
+.filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-bar select, .filter-bar input {
+  background: transparent;
+  border: 1px solid #333;
+  color: #f0ede8;
+  padding: 0.4rem 0.6rem;
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 0.95rem;
+  outline: none;
+}
+.filter-bar select:focus, .filter-bar input:focus { border-color: #F45D00; }
+.filter-bar select option { background: #1a1a1a; }
+.filter-bar .active-filters {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: #666;
+  margin-left: auto;
+}
+
+/* ===== LOGIN ===== */
+.screen { display: none; }
+.screen.active { display: block; }
+.auth-box {
+  max-width: 360px;
+  margin: 4rem auto;
+  text-align: center;
+}
+.auth-box h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+.auth-box .tagline {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+.auth-box .error {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: #ff4444;
+  margin-top: 0.75rem;
+  display: none;
+}
+.auth-box .error.show { display: block; }
+
+/* ===== EMPTY STATE ===== */
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666;
+}
+.empty .icon { font-size: 2rem; margin-bottom: 0.5rem; color: #333; }
+
+/* ===== NAV ===== */
+nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #222;
+  padding-bottom: 0;
+}
+nav .nav-link {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  color: #666;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+nav .nav-link:hover { color: #f0ede8; }
+nav .nav-link.active { color: #F45D00; border-bottom-color: #F45D00; }
+
+/* ===== SUMMARY ===== */
+.summary {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #333;
+}
+.summary .label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+}
+.summary .value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem;
+  color: #F45D00;
+}
+.summary .count {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* ===== PASSWORD INPUT ===== */
+.password-wrap {
+  display: flex;
+  border: 1px solid #444;
+}
+.password-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #f0ede8;
+  padding: 0.7rem 0.8rem;
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 1.1rem;
+  outline: none;
+}
+.password-wrap .btn {
+  border: none;
+  border-left: 1px solid #444;
+}
+/* ===== EXPORT ===== */
+.export-area {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #222;
+}
+.export-area summary {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: #666;
+  cursor: pointer;
+}
+.export-area summary:hover { color: #f0ede8; }
+.export-area textarea {
+  width: 100%;
+  min-height: 120px;
+  background: transparent;
+  border: 1px solid #333;
+  color: #888;
+  padding: 0.6rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  resize: vertical;
+}
+.import-section { margin-top: 1rem; }
+.alert {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #F45D00;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+  color: #F45D00;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .container { padding: 1rem; }
+  .form-row { grid-template-columns: 1fr; gap: 0; }
+  .budget-grid { grid-template-columns: 1fr; }
+  header { flex-direction: column; }
+  nav { overflow-x: auto; }
+  .receipt-item { flex-wrap: wrap; }
+  .receipt-item .r-date { min-width: 4rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div class="screen active" id="login-screen">
+    <div class="auth-box">
+      <h1>RECEIPTS</h1>
+      <div class="tagline">track your spending</div>
+      <form id="login-form">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="login-user" value="tanmay" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="password-wrap">
+            <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••">
+            <button type="submit" class="btn btn-primary">Open</button>
+          </div>
+        </div>
+        <div class="error" id="login-error">Wrong username or password</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MAIN APP ===== -->
+  <div class="screen" id="app-screen">
+
+    <!-- Header -->
+    <header>
+      <h1>RECEIPTS</h1>
+      <span class="sub" id="current-month"></span>
+      <button class="btn btn-sm" id="logout-btn">Logout</button>
+    </header>
+
+    <!-- Nav -->
+    <nav>
+      <button class="nav-link active" data-view="dashboard">Dashboard</button>
+      <button class="nav-link" data-view="add">Add</button>
+      <button class="nav-link" data-view="receipts">Receipts</button>
+    </nav>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div class="view" id="view-dashboard">
+      <div class="alert" id="import-alert" style="display:none;"></div>
+      <div id="budget-container"></div>
+      <div class="btn-group">
+        <button class="btn btn-sm" id="seed-btn">Add Sample Data</button>
+        <button class="btn btn-sm btn-danger" id="clear-btn">Clear All</button>
+      </div>
+      <div class="export-area">
+        <details>
+          <summary>Export / Import Data</summary>
+          <textarea id="export-json" readonly></textarea>
+          <div class="import-section">
+            <label class="form-group" style="margin:0;">
+              <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:#888;">Paste JSON to import</span>
+              <textarea id="import-json" style="min-height:80px;"></textarea>
+            </label>
+            <button class="btn btn-sm" id="import-btn" style="margin-top:0.5rem;">Import</button>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ===== ADD RECEIPT ===== -->
+    <div class="view" id="view-add" style="display:none;">
+      <form id="add-form" autocomplete="off">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="add-date" required>
+          </div>
+          <div class="form-group">
+            <label>Cost ($)</label>
+            <input type="number" id="add-cost" step="0.01" min="0.01" required placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Store</label>
+          <input type="text" id="add-store" required placeholder="e.g. Metro, Amazon">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="add-category">
+            <option value="Groceries">Groceries</option>
+            <option value="Eating Out">Eating Out</option>
+            <option value="Technology">Technology</option>
+            <option value="Recreational">Recreational</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Receipt</button>
+      </form>
+      <div id="add-msg" style="margin-top:0.75rem;font-family:'DM Mono',monospace;font-size:0.8rem;color:#F45D00;display:none;"></div>
+    </div>
+
+    <!-- ===== RECEIPTS LIST ===== -->
+    <div class="view" id="view-receipts" style="display:none;">
+      <div class="filter-bar">
+        <select id="filter-month">
+          <option value="all">All Months</option>
+        </select>
+        <select id="filter-category">
+          <option value="all">All Categories</option>
+          <option value="Groceries">Groceries</option>
+          <option value="Eating Out">Eating Out</option>
+          <option value="Technology">Technology</option>
+          <option value="Recreational">Recreational</option>
+          <option value="Other">Other</option>
+        </select>
+        <span class="active-filters" id="filter-count"></span>
+      </div>
+      <div id="receipts-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const CREDENTIALS = { username: 'tanmay', password: 'receipt123' };
+const BUDGETS = [
+  { name: 'Groceries', limit: 500 },
+  { name: 'Eating Out', limit: 200 },
+  { name: 'Technology', limit: 100 },
+  { name: 'Recreational', limit: 100 },
+  { name: 'Other', limit: 150 }
+];
+
+// ===== STATE =====
+let receipts = [];
+let isLoggedIn = false;
+
+// ===== LOCALSTORAGE HELPERS =====
+function saveReceipts() {
+  localStorage.setItem('rcts_receipts', JSON.stringify(receipts));
+}
+function loadReceipts() {
+  try {
+    const d = localStorage.getItem('rcts_receipts');
+    receipts = d ? JSON.parse(d) : [];
+  } catch(e) { receipts = []; }
+}
+
+// ===== AUTH =====
+function checkAuth() {
+  const s = localStorage.getItem('rcts_auth');
+  return s === '1';
+}
+function login(user, pass) {
+  if (user === CREDENTIALS.username && pass === CREDENTIALS.password) {
+    localStorage.setItem('rcts_auth', '1');
+    return true;
+  }
+  return false;
+}
+function logout() {
+  localStorage.removeItem('rcts_auth');
+  showScreen('login-screen');
+}
+
+// ===== SCREEN MANAGEMENT =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+  document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-link[data-view="${id.replace('view-','')}"]`).classList.add('active');
+  if (id === 'view-dashboard') renderDashboard();
+  if (id === 'view-receipts') renderReceipts();
+}
+
+// ===== DATE HELPERS =====
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function monthKey(str) {
+  return str.slice(0, 7); // YYYY-MM
+}
+function formatDate(str) {
+  const d = new Date(str + 'T00:00:00');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+}
+function formatCurrency(n) {
+  return '$' + Number(n).toFixed(2);
+}
+function monthLabel(str) {
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const [y,m] = str.split('-');
+  return months[parseInt(m)-1] + ' ' + y;
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  loadReceipts();
+  const today = new Date();
+  const currentMonth = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
+  document.getElementById('current-month').textContent = monthLabel(currentMonth) + ' — ' + receipts.length + ' receipts';
+
+  // Filter current month
+  const monthRcts = receipts.filter(r => monthKey(r.date) === currentMonth);
+  const totals = {};
+  BUDGETS.forEach(b => totals[b.name] = { spent: 0, limit: b.limit });
+  let grandTotal = 0;
+  monthRcts.forEach(r => {
+    const cat = r.category || 'Other';
+    if (!totals[cat]) totals[cat] = { spent: 0, limit: 0 };
+    totals[cat].spent += Number(r.cost);
+    grandTotal += Number(r.cost);
+  });
+
+  let html = '<div class="budget-grid">';
+  BUDGETS.forEach(b => {
+    const t = totals[b.name] || { spent: 0 };
+    const pct = b.limit > 0 ? Math.min(100, (t.spent / b.limit) * 100) : 0;
+    const over = t.spent > b.limit;
+    const remain = b.limit - t.spent;
+    html += `<div class="budget-card${over ? ' over' : ''}">
+      <div class="cat-name">${b.name}</div>
+      <div class="amount">
+        <span class="spent">${formatCurrency(t.spent)}</span>
+        <span class="sep">/</span>
+        <span class="budget">${formatCurrency(b.limit)}</span>
+      </div>
+      <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="remaining">${over ? formatCurrency(Math.abs(remain)) + ' over' : formatCurrency(remain) + ' left'}</div>
+    </div>`;
+  });
+  // Total
+  const totalBudget = BUDGETS.reduce((s,b) => s + b.limit, 0);
+  const totalPct = totalBudget > 0 ? Math.min(100, (grandTotal / totalBudget) * 100) : 0;
+  html += `<div class="budget-card total-card">
+    <div class="cat-name">Total Spent</div>
+    <div class="amount"><span class="spent">${formatCurrency(grandTotal)}</span><span class="sep">/</span><span class="budget">${formatCurrency(totalBudget)}</span></div>
+    <div class="bar"><div class="bar-fill" style="width:${totalPct}%"></div></div>
+  </div>`;
+  html += '</div>';
+
+  // Recent 5
+  const recent = [...receipts].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 5);
+  if (recent.length > 0) {
+    html += '<div class="summary"><div class="label">Recent Receipts</div></div>';
+    recent.forEach(r => {
+      html += `<div class="receipt-item">
+        <span class="r-date">${r.date.slice(5)}</span>
+        <span class="r-store">${escHtml(r.store)}</span>
+        <span class="r-category">${r.category || 'Other'}</span>
+        <span class="r-cost">${formatCurrency(r.cost)}</span>
+      </div>`;
+    });
+  } else {
+    html += '<div class="empty"><div class="icon">+</div>No receipts yet. Add your first one!</div>';
+  }
+
+  document.getElementById('budget-container').innerHTML = html;
+
+  // Export JSON
+  document.getElementById('export-json').value = JSON.stringify(receipts, null, 2);
+}
+
+// ===== ADD RECEIPT =====
+document.getElementById('add-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  loadReceipts();
+  const date = document.getElementById('add-date').value;
+  const cost = parseFloat(document.getElementById('add-cost').value);
+  const store = document.getElementById('add-store').value.trim();
+  const category = document.getElementById('add-category').value;
+  if (!date || !cost || !store) return;
+  receipts.push({
+    id: Date.now(),
+    date,
+    cost,
+    store,
+    category
+  });
+  saveReceipts();
+  document.getElementById('add-date').value = todayStr();
+  document.getElementById('add-cost').value = '';
+  document.getElementById('add-store').value = '';
+  const msg = document.getElementById('add-msg');
+  msg.textContent = '✓ Added ' + formatCurrency(cost) + ' at ' + store;
+  msg.style.display = 'block';
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+});
+
+// ===== RECEIPTS LIST =====
+function renderReceipts() {
+  loadReceipts();
+  const monthFilter = document.getElementById('filter-month').value;
+  const catFilter = document.getElementById('filter-category').value;
+
+  let filtered = [...receipts];
+  if (monthFilter !== 'all') filtered = filtered.filter(r => monthKey(r.date) === monthFilter);
+  if (catFilter !== 'all') filtered = filtered.filter(r => (r.category || 'Other') === catFilter);
+  filtered.sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
+
+  document.getElementById('filter-count').textContent = filtered.length + ' receipt' + (filtered.length !== 1 ? 's' : '');
+
+  if (filtered.length === 0) {
+    document.getElementById('receipts-list').innerHTML = '<div class="empty"><div class="icon">-</div>No receipts match your filters.</div>';
+    return;
+  }
+
+  let html = '';
+  filtered.forEach(r => {
+    html += `<div class="receipt-item">
+      <span class="r-date">${r.date.slice(5)}</span>
+      <span class="r-store">${escHtml(r.store)}</span>
+      <span class="r-category">${r.category || 'Other'}</span>
+      <span class="r-cost">${formatCurrency(r.cost)}</span>
+      <button class="r-delete" data-id="${r.id}" title="Delete">✕</button>
+    </div>`;
+  });
+  document.getElementById('receipts-list').innerHTML = html;
+
+  // Delete handlers
+  document.querySelectorAll('.r-delete').forEach(btn => {
+    btn.addEventListener('click', function() {
+      if (!confirm('Delete this receipt?')) return;
+      const id = parseInt(this.dataset.id);
+      loadReceipts();
+      receipts = receipts.filter(r => r.id !== id);
+      saveReceipts();
+      renderReceipts();
+      renderDashboard();
+    });
+  });
+}
+
+// ===== FILTER MONTH POPULATE =====
+function populateMonths() {
+  const sel = document.getElementById('filter-month');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="all">All Months</option>';
+  const months = new Set();
+  receipts.forEach(r => months.add(monthKey(r.date)));
+  const sorted = [...months].sort().reverse();
+  sorted.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = monthLabel(m);
+    sel.appendChild(opt);
+  });
+  // restore selection if still valid
+  if ([...sel.options].some(o => o.value === currentVal)) sel.value = currentVal;
+  else sel.value = 'all';
+}
+
+document.getElementById('filter-month').addEventListener('change', renderReceipts);
+document.getElementById('filter-category').addEventListener('change', renderReceipts);
+
+// ===== UTILITY =====
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ===== SEED DATA =====
+document.getElementById('seed-btn').addEventListener('click', function() {
+  loadReceipts();
+  const samples = [
+    { date: '2026-06-08', cost: 87.43, store: 'Red Apron', category: 'Groceries' },
+    { date: '2026-06-07', cost: 24.50, store: 'Tim Hortons', category: 'Eating Out' },
+    { date: '2026-06-06', cost: 12.99, store: 'Netflix', category: 'Technology' },
+    { date: '2026-06-05', cost: 45.00, store: 'Gas Station', category: 'Other' },
+    { date: '2026-06-04', cost: 156.20, store: 'Metro', category: 'Groceries' },
+    { date: '2026-06-03', cost: 34.80, store: 'LCBO', category: 'Recreational' },
+    { date: '2026-06-02', cost: 9.99, store: 'Spotify', category: 'Technology' },
+    { date: '2026-06-01', cost: 68.50, store: 'Milestones', category: 'Eating Out' },
+  ];
+  samples.forEach(s => {
+    receipts.push({ id: Date.now() + Math.random() * 1000, ...s });
+  });
+  saveReceipts();
+  renderDashboard();
+});
+
+// ===== CLEAR =====
+document.getElementById('clear-btn').addEventListener('click', function() {
+  if (!confirm('Delete ALL receipts?')) return;
+  if (!confirm('Are you sure? This cannot be undone.')) return;
+  receipts = [];
+  saveReceipts();
+  renderDashboard();
+  populateMonths();
+  renderReceipts();
+});
+
+// ===== LOGOUT =====
+document.getElementById('logout-btn').addEventListener('click', logout);
+
+// ===== LOGIN =====
+document.getElementById('login-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (login(user, pass)) {
+    document.getElementById('login-error').classList.remove('show');
+    bootstrapApp();
+  } else {
+    document.getElementById('login-error').classList.add('show');
+  }
+});
+
+// ===== IMPORT =====
+document.getElementById('import-btn').addEventListener('click', function() {
+  const text = document.getElementById('import-json').value.trim();
+  if (!text) return;
+  try {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('Not an array');
+    data.forEach((r, i) => {
+      if (!r.date || !r.cost || !r.store) throw new Error('Item ' + i + ' missing date/cost/store');
+      r.id = r.id || Date.now() + i;
+      r.category = r.category || 'Other';
+    });
+    loadReceipts();
+    receipts = receipts.concat(data);
+    saveReceipts();
+    document.getElementById('import-json').value = '';
+    const alert = document.getElementById('import-alert');
+    alert.textContent = '✓ Imported ' + data.length + ' receipt' + (data.length !== 1 ? 's' : '');
+    alert.style.display = 'block';
+    setTimeout(() => { alert.style.display = 'none'; }, 4000);
+    renderDashboard();
+    populateMonths();
+  } catch(e) {
+    alert('Import error: ' + e.message);
+  }
+});
+
+// ===== BOOTSTRAP =====
+function bootstrapApp() {
+  isLoggedIn = true;
+  showScreen('app-screen');
+  loadReceipts();
+  populateMonths();
+  showView('view-dashboard');
+}
+
+// ===== NAVIGATION =====
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', function() {
+    showView('view-' + this.dataset.view);
+    if (this.dataset.view === 'add') {
+      document.getElementById('add-date').value = todayStr();
+    }
+  });
+});
+
+// ===== INIT =====
+if (checkAuth()) {
+  bootstrapApp();
+} else {
+  showScreen('login-screen');
+}
+</script>
+</body>
+</html>

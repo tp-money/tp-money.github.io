@@ -6,6 +6,7 @@
 <title>Receipt Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 /* ===== RESET & BASE ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -372,6 +373,21 @@ nav .nav-link.active { color: #F45D00; border-bottom-color: #F45D00; }
   color: #F45D00;
 }
 
+/* ===== CHARTS ===== */
+.chart-row { display: flex; gap: 1rem; margin: 1.5rem 0; }
+.chart-box { flex: 1; min-width: 0; }
+.chart-box.section { border: 1px solid #333; padding: 1rem; }
+.chart-box h2 {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-bottom: 0.75rem;
+}
+.chart-wrap { position: relative; height: 200px; }
+@media (max-width: 600px) { .chart-row { flex-direction: column; } }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   .container { padding: 1rem; }
@@ -431,7 +447,17 @@ nav .nav-link.active { color: #F45D00; border-bottom-color: #F45D00; }
     <div class="view" id="view-dashboard">
       <div class="alert" id="import-alert" style="display:none;"></div>
       <div id="budget-container"></div>
-      <div class="btn-group">
+<div class="chart-row">
+  <div class="chart-box section">
+    <h2>By Category</h2>
+    <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+  </div>
+  <div class="chart-box section">
+    <h2>Monthly Trend</h2>
+    <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+</div>
+<div class="btn-group">
         <button class="btn btn-sm" id="seed-btn">Add Sample Data</button>
         <button class="btn btn-sm btn-danger" id="clear-btn">Clear All</button>
       </div>
@@ -650,6 +676,88 @@ function renderDashboard() {
 
   // Export JSON
   document.getElementById('export-json').value = JSON.stringify(receipts, null, 2);
+
+  // ==== RENDER CHARTS ====
+  renderCharts(currentMonth);
+}
+
+// ===== CHARTS =====
+let pieChartInstance = null;
+let trendChartInstance = null;
+
+function renderCharts(currentMonth) {
+  loadReceipts();
+  const CAT_COLORS = { 'Groceries': '#22c55e', 'Eating Out': '#f97316', 'Technology': '#3b82f6', 'Recreational': '#f59e0b', 'Other': '#a855f7' };
+
+  // --- PIE: By Category (current month) ---
+  const monthRcts = receipts.filter(r => monthKey(r.date) === currentMonth);
+  const byCat = {};
+  monthRcts.forEach(r => {
+    const c = r.category || 'Other';
+    byCat[c] = (byCat[c] || 0) + Number(r.cost);
+  });
+
+  if (pieChartInstance) pieChartInstance.destroy();
+  const pieCtx = document.getElementById('pieChart');
+  if (pieCtx) {
+    const labels = Object.keys(byCat).filter(k => byCat[k] > 0);
+    const data = labels.map(k => byCat[k]);
+    const colors = labels.map(c => CAT_COLORS[c] || '#888');
+    pieChartInstance = new Chart(pieCtx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+      options: {
+        plugins: { legend: { position: 'bottom', labels: { color: '#7a7570', boxWidth: 10, font: { family: "'DM Mono', monospace", size: 9 } } } },
+        cutout: '55%'
+      }
+    });
+  }
+
+  // --- LINE: Monthly Trend ---
+  // Build month buckets from all receipts
+  const months = [...new Set(receipts.map(r => monthKey(r.date)))].sort();
+  const trendByCat = {};
+  const CAT_ORDER = ['Groceries', 'Eating Out', 'Technology', 'Recreational', 'Other'];
+
+  months.forEach(m => {
+    const mRcts = receipts.filter(r => monthKey(r.date) === m);
+    CAT_ORDER.forEach(cat => {
+      if (!trendByCat[cat]) trendByCat[cat] = [];
+      const total = mRcts.filter(r => (r.category || 'Other') === cat).reduce((s, r) => s + Number(r.cost), 0);
+      trendByCat[cat].push(total);
+    });
+  });
+
+  const monthLabels = months.map(m => {
+    const parts = m.split('-');
+    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return names[parseInt(parts[1])-1];
+  });
+
+  if (trendChartInstance) trendChartInstance.destroy();
+  const trendCtx = document.getElementById('trendChart');
+  if (trendCtx) {
+    const datasets = CAT_ORDER.map(cat => ({
+      label: cat,
+      data: trendByCat[cat] || months.map(() => 0),
+      borderColor: CAT_COLORS[cat],
+      backgroundColor: CAT_COLORS[cat],
+      tension: 0.3,
+      fill: false,
+      pointRadius: 3
+    }));
+    trendChartInstance = new Chart(trendCtx, {
+      type: 'line',
+      data: { labels: monthLabels, datasets },
+      options: {
+        plugins: { legend: { position: 'bottom', labels: { color: '#7a7570', boxWidth: 10, font: { family: "'DM Mono', monospace", size: 9 } } } },
+        scales: {
+          x: { ticks: { color: '#7a7570', font: { family: "'DM Mono', monospace", size: 9 } }, grid: { color: '#2a2a2a' } },
+          y: { ticks: { color: '#7a7570', font: { family: "'DM Mono', monospace", size: 9 } }, grid: { color: '#2a2a2a' } }
+        }
+      }
+    });
+  }
 }
 
 // ===== ADD RECEIPT =====

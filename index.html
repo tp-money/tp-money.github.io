@@ -751,24 +751,41 @@ function escHtml(s) {
   return d.innerHTML;
 }
 
-// ===== SEED DATA =====
-document.getElementById('seed-btn').addEventListener('click', function() {
-  loadReceipts();
-  const samples = [
-    { date: '2026-06-08', cost: 87.43, store: 'Red Apron', category: 'Groceries' },
-    { date: '2026-06-07', cost: 24.50, store: 'Tim Hortons', category: 'Eating Out' },
-    { date: '2026-06-06', cost: 12.99, store: 'Netflix', category: 'Technology' },
-    { date: '2026-06-05', cost: 45.00, store: 'Gas Station', category: 'Other' },
-    { date: '2026-06-04', cost: 156.20, store: 'Metro', category: 'Groceries' },
-    { date: '2026-06-03', cost: 34.80, store: 'LCBO', category: 'Recreational' },
-    { date: '2026-06-02', cost: 9.99, store: 'Spotify', category: 'Technology' },
-    { date: '2026-06-01', cost: 68.50, store: 'Milestones', category: 'Eating Out' },
-  ];
-  samples.forEach(s => {
+// ===== REAL DATA =====
+const REAL_RECEIPTS = [
+  { date: '2026-05-07', cost: 11.97, store: 'Shoppers Drug Mart', category: 'Other' },
+  { date: '2026-05-07', cost: 18.08, store: 'Taki Ramen', category: 'Eating Out' },
+  { date: '2026-05-08', cost: 16.95, store: 'Panario', category: 'Eating Out' },
+  { date: '2026-05-09', cost: 18.32, store: 'Loblaws', category: 'Groceries' },
+  { date: '2026-05-10', cost: 10.94, store: 'Loblaws', category: 'Groceries' },
+  { date: '2026-05-12', cost: 46.90, store: 'Red Apron', category: 'Groceries' },
+  { date: '2026-05-12', cost: 18.00, store: 'Loblaws', category: 'Groceries' },
+  { date: '2026-05-14', cost: 18.08, store: 'Gooney\'s', category: 'Eating Out' },
+  { date: '2026-05-20', cost: 37.20, store: 'The Red Apron', category: 'Groceries' },
+  { date: '2026-05-22', cost: 28.27, store: 'Metro', category: 'Groceries' },
+  { date: '2026-05-24', cost: 23.73, store: 'Loblaws Isabella', category: 'Groceries' },
+  { date: '2026-05-24', cost: 5.65, store: 'Isabella Restaurant', category: 'Eating Out' },
+  { date: '2026-05-26', cost: 15.76, store: 'Loblaws', category: 'Groceries' },
+  { date: '2026-05-26', cost: 24.45, store: 'The Red Apron', category: 'Groceries' },
+  { date: '2026-05-31', cost: 8.50, store: 'Loblaws Isabella', category: 'Groceries' },
+  { date: '2026-05-31', cost: 66.60, store: 'Cyco\'s', category: 'Other' },
+  { date: '2026-06-01', cost: 20.43, store: 'Walmart', category: 'Groceries' },
+  { date: '2026-06-02', cost: 64.70, store: 'The Red Apron', category: 'Groceries' },
+  { date: '2026-06-02', cost: 8.00, store: 'Massine\'s Independent', category: 'Groceries' },
+];
+
+function seedRealData() {
+  REAL_RECEIPTS.forEach(s => {
     receipts.push({ id: Date.now() + Math.random() * 1000, ...s });
   });
   saveReceipts();
+}
+
+document.getElementById('seed-btn').addEventListener('click', function() {
+  loadReceipts();
+  seedRealData();
   renderDashboard();
+  populateMonths();
 });
 
 // ===== CLEAR =====
@@ -830,6 +847,11 @@ function bootstrapApp() {
   isLoggedIn = true;
   showScreen('app-screen');
   loadReceipts();
+  // Auto-seed real data on first visit
+  if (receipts.length === 0) {
+    seedRealData();
+    loadReceipts();
+  }
   populateMonths();
   showView('view-dashboard');
 }

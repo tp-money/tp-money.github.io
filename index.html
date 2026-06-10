@@ -446,7 +446,6 @@ nav .nav-link.active { color: #F45D00; border-bottom-color: #F45D00; }
     <!-- ===== DASHBOARD ===== -->
     <div class="view" id="view-dashboard">
       <div class="alert" id="import-alert" style="display:none;"></div>
-      <div id="budget-container"></div>
 <div class="chart-row">
   <div class="chart-box section">
     <h2>By Category</h2>
@@ -457,9 +456,9 @@ nav .nav-link.active { color: #F45D00; border-bottom-color: #F45D00; }
     <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
   </div>
 </div>
+      <div id="budget-container"></div>
 <div class="btn-group">
-        <button class="btn btn-sm" id="seed-btn">Add Sample Data</button>
-        <button class="btn btn-sm btn-danger" id="clear-btn">Clear All</button>
+        <button class="btn btn-sm" id="restore-btn">Restore Original Data</button>
       </div>
       <div class="export-area">
         <details>
@@ -889,19 +888,12 @@ function seedRealData() {
   saveReceipts();
 }
 
-document.getElementById('seed-btn').addEventListener('click', function() {
-  loadReceipts();
-  seedRealData();
-  renderDashboard();
-  populateMonths();
-});
+// seed-btn removed — real data auto-seeds on first visit
 
 // ===== CLEAR =====
-document.getElementById('clear-btn').addEventListener('click', function() {
-  if (!confirm('Delete ALL receipts?')) return;
-  if (!confirm('Are you sure? This cannot be undone.')) return;
-  receipts = [];
-  saveReceipts();
+document.getElementById('restore-btn').addEventListener('click', function() {
+  if (!confirm('Restore original 19 receipts from the old tracker? This replaces all current data.')) return;
+  forceRestoreOriginal();
   renderDashboard();
   populateMonths();
   renderReceipts();
@@ -954,14 +946,15 @@ document.getElementById('import-btn').addEventListener('click', function() {
 function bootstrapApp() {
   isLoggedIn = true;
   showScreen('app-screen');
-  loadReceipts();
-  // Auto-seed real data on first visit
-  if (receipts.length === 0) {
-    seedRealData();
-    loadReceipts();
-  }
+  // Force restore original data from old tracker
+  forceRestoreOriginal();
   populateMonths();
   showView('view-dashboard');
+}
+
+function forceRestoreOriginal() {
+  receipts = REAL_RECEIPTS.map(r => ({ ...r, id: Date.now() + Math.random() * 1000 }));
+  saveReceipts();
 }
 
 // ===== NAVIGATION =====
